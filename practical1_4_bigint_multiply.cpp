@@ -1,72 +1,85 @@
 /*
- * Large Integer Multiplication (Grade-School Method)
+ * Large Integer Multiplication - Karatsuba Algorithm (Divide and Conquer)
  *
  * ---------------------------------------------------------------
- * Multiplies two arbitrarily large integers represented as strings.
- * Uses the standard grade-school digit-by-digit multiplication.
+ * Splits each n-digit number into two halves (high and low), then
+ * uses only 3 recursive multiplications instead of 4:
  *
- * Let m = digits in the first number, n = digits in the second.
+ *   x = xh * 10^m + xl          (split x at the midpoint m)
+ *   y = yh * 10^m + yl
  *
- * Time  : O(m * n)   — each digit of the first multiplied by each
- *                      digit of the second
- * Space : O(m + n)   — result has at most m + n digits
+ *   z0 = xl * yl
+ *   z2 = xh * yh
+ *   z1 = (xl + xh) * (yl + yh) - z0 - z2     <-- only 1 multiply
+ *
+ *   result = z2 * 10^(2m)  +  z1 * 10^m  +  z0
+ *
+ * Let n = number of digits in the larger number.
+ *
+ * Time  : O(n^1.585)  — Karatsuba (3 recursive calls, exponent = log2(3))
+ *         O(n^2)      — grade-school (for comparison)
+ * Space : O(n log n)  — recursive call stack depth is O(log n)
  * ---------------------------------------------------------------
  */
 
 #include <iostream>
 #include <string>
-#include <vector>
 #include <chrono>
+#include <cmath>
+#include <algorithm>
 
 using namespace std;
 
-// ---- Core Algorithm --------------------------------------------------
+// ---- Helper: integer power of 10 (avoids floating-point inaccuracy) ---
 
-string multiplyLargeIntegers(const string& a, const string& b) {
-    int m = a.size();
-    int n = b.size();
+long long pow10(int n) {
+    long long result = 1;
+    for (int i = 0; i < n; i++)
+        result *= 10;
+    return result;
+}
 
-    // The product has at most m + n digits
-    vector<int> result(m + n, 0);
+// ---- Karatsuba Algorithm ---------------------------------------------
 
-    // Multiply every digit of 'a' with every digit of 'b'
-    // and accumulate in the correct position
-    for (int i = m - 1; i >= 0; i--) {
-        for (int j = n - 1; j >= 0; j--) {
-            int mul  = (a[i] - '0') * (b[j] - '0');
-            int pos1 = i + j;      // carry goes here
-            int pos2 = i + j + 1;  // current digit goes here
+// Works correctly for non-negative long long values.
+// For numbers larger than ~10^9, the intermediate sums can overflow
+// long long; for a true arbitrary-precision version use string/vector.
+long long karatsuba(long long x, long long y) {
+    // Base case: single-digit (or zero) multiplication
+    if (x < 10 || y < 10)
+        return x * y;
 
-            int total = mul + result[pos2];
+    // Number of digits in the larger operand
+    int n = max(to_string(x).size(), to_string(y).size());
+    int m = n / 2;            // split point
+    long long base = pow10(m);
 
-            result[pos2] = total % 10;
-            result[pos1] += total / 10;
-        }
-    }
+    // Split each number into high and low halves
+    long long xh = x / base,  xl = x % base;
+    long long yh = y / base,  yl = y % base;
 
-    // Build the result string, skip any leading zeros
-    string product = "";
-    for (int digit : result) {
-        if (!(product.empty() && digit == 0))
-            product += to_string(digit);
-    }
+    // 3 recursive multiplications (instead of the naive 4)
+    long long z0 = karatsuba(xl, yl);                       // low  * low
+    long long z2 = karatsuba(xh, yh);                       // high * high
+    long long z1 = karatsuba(xl + xh, yl + yh) - z0 - z2;  // cross term
 
-    return product.empty() ? "0" : product;
+    // Combine: z2 * 10^(2m)  +  z1 * 10^m  +  z0
+    return z2 * base * base + z1 * base + z0;
 }
 
 // ---- Main ------------------------------------------------------------
 
 int main() {
-    string a, b;
+    long long a, b;
 
-    cout << "Enter first large integer  : ";
+    cout << "Enter first number  : ";
     cin >> a;
-    cout << "Enter second large integer : ";
+    cout << "Enter second number : ";
     cin >> b;
 
     auto start = chrono::high_resolution_clock::now();
 
-    string product = multiplyLargeIntegers(a, b);
+    long long product = karatsuba(a, b);
 
     auto stop     = chrono::high_resolution_clock::now();
     long long dur = chrono::duration_cast<chrono::microseconds>(stop - start).count();
