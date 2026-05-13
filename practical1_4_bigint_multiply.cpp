@@ -1,53 +1,78 @@
-// Practical 1.4 - Large Integer Multiplication
-// Grade-school digit-by-digit multiplication for arbitrarily large integers.
-// Time: O(n * m) where n, m are digit counts of the two numbers.
+/*
+ * Large Integer Multiplication (Grade-School Method)
+ *
+ * ---------------------------------------------------------------
+ * Multiplies two arbitrarily large integers represented as strings.
+ * Uses the standard grade-school digit-by-digit multiplication.
+ *
+ * Let m = digits in the first number, n = digits in the second.
+ *
+ * Time  : O(m * n)   — each digit of the first multiplied by each
+ *                      digit of the second
+ * Space : O(m + n)   — result has at most m + n digits
+ * ---------------------------------------------------------------
+ */
 
-#include <bits/stdc++.h>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <chrono>
+
 using namespace std;
 
-void multiplyBigInt(const string& a, const string& b) {
-    int n = a.size(), m = b.size();
+// ---- Core Algorithm --------------------------------------------------
 
-    if ((n == 1 && a[0] == '0') || (m == 1 && b[0] == '0')) {
-        cout << "Product: 0\n";
-        return;
-    }
+string multiplyLargeIntegers(const string& a, const string& b) {
+    int m = a.size();
+    int n = b.size();
 
-    // Result can have at most n+m digits
-    vector<int> result(n + m, 0);
+    // The product has at most m + n digits
+    vector<int> result(m + n, 0);
 
-    for (int i = n - 1; i >= 0; i--) {
-        for (int j = m - 1; j >= 0; j--) {
-            int mul = (a[i] - '0') * (b[j] - '0');
-            int p1 = i + j, p2 = i + j + 1;
-            int sum = mul + result[p2];
-            result[p2] = sum % 10;
-            result[p1] += sum / 10;
+    // Multiply every digit of 'a' with every digit of 'b'
+    // and accumulate in the correct position
+    for (int i = m - 1; i >= 0; i--) {
+        for (int j = n - 1; j >= 0; j--) {
+            int mul  = (a[i] - '0') * (b[j] - '0');
+            int pos1 = i + j;      // carry goes here
+            int pos2 = i + j + 1;  // current digit goes here
+
+            int total = mul + result[pos2];
+
+            result[pos2] = total % 10;
+            result[pos1] += total / 10;
         }
     }
 
-    cout << "Product: ";
-    bool leading = true;
-    for (int d : result) {
-        if (leading && d == 0) continue;
-        leading = false;
-        cout << d;
+    // Build the result string, skip any leading zeros
+    string product = "";
+    for (int digit : result) {
+        if (!(product.empty() && digit == 0))
+            product += to_string(digit);
     }
-    if (leading) cout << "0";
-    cout << "\n";
+
+    return product.empty() ? "0" : product;
 }
+
+// ---- Main ------------------------------------------------------------
 
 int main() {
     string a, b;
-    cout << "Enter first number: ";
+
+    cout << "Enter first large integer  : ";
     cin >> a;
-    cout << "Enter second number: ";
+    cout << "Enter second large integer : ";
     cin >> b;
 
     auto start = chrono::high_resolution_clock::now();
-    multiplyBigInt(a, b);
-    auto end = chrono::high_resolution_clock::now();
 
-    cout << "Time: " << chrono::duration_cast<chrono::microseconds>(end - start).count() << " us\n";
+    string product = multiplyLargeIntegers(a, b);
+
+    auto stop     = chrono::high_resolution_clock::now();
+    long long dur = chrono::duration_cast<chrono::microseconds>(stop - start).count();
+
+    cout << "\nProduct : " << product << endl;
+    cout << "Time    : " << dur << " microseconds" << endl;
+
     return 0;
 }

@@ -1,35 +1,66 @@
-// Practical 5.1 - Naive Pattern Matching
-// Slide the pattern over the text one position at a time, check each window.
-// Time: O((n - m + 1) * m) | Simple but no preprocessing.
+/*
+ * Naive (Brute-Force) Pattern Matching
+ *
+ * ---------------------------------------------------------------
+ * Slide the pattern over the text one character at a time and
+ * check for a match at each position.
+ *
+ * Let n = length of text, m = length of pattern.
+ *
+ * Time  : Best  O(n)    — first character of pattern never matches
+ *         Worst O(n*m)  — e.g., text = "AAAA...A", pattern = "AAAB"
+ * Space : O(1)          — no extra data structures needed
+ * ---------------------------------------------------------------
+ */
 
-#include <bits/stdc++.h>
+#include <iostream>
+#include <string>
+#include <chrono>
+
 using namespace std;
 
-void naiveSearch(const string& text, const string& pat) {
-    int n = text.size(), m = pat.size();
+// ---- Core Algorithm --------------------------------------------------
+
+void naiveSearch(const string& text, const string& pattern) {
+    int n = text.size();
+    int m = pattern.size();
     bool found = false;
 
     for (int i = 0; i <= n - m; i++) {
-        int j;
-        for (j = 0; j < m; j++)
-            if (text[i + j] != pat[j]) break;
+        // Compare pattern against text starting at position i
+        int j = 0;
+        while (j < m && text[i + j] == pattern[j])
+            j++;
 
         if (j == m) {
-            cout << "Pattern found at index: " << i << "\n";
+            cout << "Pattern found at index: " << i << endl;
             found = true;
         }
     }
 
-    if (!found) cout << "Pattern not found.\n";
+    if (!found)
+        cout << "Pattern not found." << endl;
 }
 
-int main() {
-    string text, pat;
-    cout << "Enter text: ";
-    getline(cin, text);
-    cout << "Enter pattern: ";
-    getline(cin, pat);
+// ---- Main ------------------------------------------------------------
 
-    naiveSearch(text, pat);
+int main() {
+    string text, pattern;
+
+    cout << "Enter text    : ";
+    getline(cin, text);
+
+    cout << "Enter pattern : ";
+    getline(cin, pattern);
+
+    auto start = chrono::high_resolution_clock::now();
+
+    naiveSearch(text, pattern);
+
+    auto stop     = chrono::high_resolution_clock::now();
+    long long dur = chrono::duration_cast<chrono::microseconds>(stop - start).count();
+
+    cout << "Time: " << dur << " microseconds" << endl;
+
     return 0;
 }

@@ -1,14 +1,33 @@
-// Practical 4.1 - N-Queens Problem (Backtracking)
-// Place N queens on an N×N board so no two queens share a row, column, or diagonal.
-// Try each row in current column; backtrack if no safe position found.
+/*
+ * N-Queens Problem (Backtracking)
+ *
+ * ---------------------------------------------------------------
+ * Place N queens on an NxN chessboard so that no two queens
+ * attack each other. Queens attack in the same row, column, or
+ * diagonal.
+ *
+ * Strategy: Place queens column by column. For each column, try
+ *   every row. If the placement is safe, recurse to the next column.
+ *   If no safe row exists, backtrack.
+ *
+ * Time  : O(n!)  worst case — in practice much faster due to pruning
+ * Space : O(n^2) — board storage
+ *         O(n)   — recursion stack depth
+ * ---------------------------------------------------------------
+ */
 
-#include <bits/stdc++.h>
+#include <iostream>
+#include <vector>
+#include <chrono>
+
 using namespace std;
 
-bool isSafe(int** board, int row, int col, int n) {
-    // Check same row to the left
-    for (int i = 0; i < col; i++)
-        if (board[row][i]) return false;
+// ---- Safety Check ----------------------------------------------------
+
+bool isSafe(const vector<vector<int>>& board, int row, int col, int n) {
+    // Check the same row to the left
+    for (int j = 0; j < col; j++)
+        if (board[row][j]) return false;
 
     // Check upper-left diagonal
     for (int i = row, j = col; i >= 0 && j >= 0; i--, j--)
@@ -21,44 +40,62 @@ bool isSafe(int** board, int row, int col, int n) {
     return true;
 }
 
-bool solve(int** board, int col, int n) {
-    if (col >= n) return true;
+// ---- Print Board -----------------------------------------------------
 
-    for (int i = 0; i < n; i++) {
-        if (isSafe(board, i, col, n)) {
-            board[i][col] = 1;
-            if (solve(board, col + 1, n)) return true;
-            board[i][col] = 0; // backtrack
-        }
-    }
-    return false;
-}
-
-void printBoard(int** board, int n) {
+void printBoard(const vector<vector<int>>& board, int n) {
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++)
-            cout << (board[i][j] ? " Q" : " .");
-        cout << "\n";
+            cout << (board[i][j] ? " Q " : " . ");
+        cout << endl;
     }
+    cout << endl;
 }
+
+// ---- Backtracking ----------------------------------------------------
+
+// Place queens one column at a time; return true when first solution found
+bool solve(vector<vector<int>>& board, int col, int n) {
+    if (col == n) {
+        // All n queens placed successfully
+        cout << "Solution:" << endl;
+        printBoard(board, n);
+        return true;
+    }
+
+    for (int row = 0; row < n; row++) {
+        if (isSafe(board, row, col, n)) {
+            board[row][col] = 1;
+
+            if (solve(board, col + 1, n))
+                return true;  // stop after the first solution is found
+
+            board[row][col] = 0;  // backtrack: undo placement
+        }
+    }
+
+    return false;  // no valid row found in this column
+}
+
+// ---- Main ------------------------------------------------------------
 
 int main() {
     int n;
-    cout << "Enter number of queens: ";
+    cout << "Enter number of queens (N): ";
     cin >> n;
 
-    int** board = new int*[n];
-    for (int i = 0; i < n; i++) {
-        board[i] = new int[n];
-        for (int j = 0; j < n; j++) board[i][j] = 0;
-    }
+    vector<vector<int>> board(n, vector<int>(n, 0));
 
-    if (solve(board, 0, n))
-        printBoard(board, n);
-    else
-        cout << "No solution exists.\n";
+    auto start = chrono::high_resolution_clock::now();
 
-    for (int i = 0; i < n; i++) delete[] board[i];
-    delete[] board;
+    bool solved = solve(board, 0, n);
+
+    auto stop     = chrono::high_resolution_clock::now();
+    long long dur = chrono::duration_cast<chrono::microseconds>(stop - start).count();
+
+    if (!solved)
+        cout << "No solution exists for N = " << n << "." << endl;
+
+    cout << "Time: " << dur << " microseconds" << endl;
+
     return 0;
 }

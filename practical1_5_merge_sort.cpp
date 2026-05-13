@@ -1,62 +1,112 @@
-// Practical 1.5 - Merge Sort (Divide and Conquer)
-// Recursively split array into halves, sort each half, then merge them back.
-// Time: O(n log n) | Space: O(n)
+/*
+ * Merge Sort (Divide and Conquer)
+ *
+ * ---------------------------------------------------------------
+ * Recursively divide the array into two halves, sort each half,
+ * then merge the two sorted halves back together.
+ *
+ * Time  : O(n log n)  — Best / Average / Worst (always the same)
+ * Space : O(n)        — temporary arrays used during the merge step
+ * ---------------------------------------------------------------
+ */
 
-#include <bits/stdc++.h>
+#include <iostream>
+#include <vector>
+#include <chrono>
+#include <cstdlib>
+#include <ctime>
+
 using namespace std;
 
-void merge(int arr[], int lo, int mid, int hi) {
-    int n1 = mid - lo + 1, n2 = hi - mid;
-    int* L = new int[n1];
-    int* R = new int[n2];
+// ---- Merge -----------------------------------------------------------
 
-    for (int i = 0; i < n1; i++) L[i] = arr[lo + i];
-    for (int i = 0; i < n2; i++) R[i] = arr[mid + 1 + i];
+// Merge the two sorted halves arr[low..mid] and arr[mid+1..high]
+void merge(vector<int>& arr, int low, int mid, int high) {
+    // Copy both halves into temporary vectors
+    vector<int> left(arr.begin() + low,     arr.begin() + mid + 1);
+    vector<int> right(arr.begin() + mid + 1, arr.begin() + high + 1);
 
-    int i = 0, j = 0, k = lo;
-    while (i < n1 && j < n2) arr[k++] = (L[i] <= R[j]) ? L[i++] : R[j++];
-    while (i < n1) arr[k++] = L[i++];
-    while (j < n2) arr[k++] = R[j++];
+    int i = 0, j = 0, k = low;
 
-    delete[] L;
-    delete[] R;
+    // Merge back in sorted order by comparing front elements
+    while (i < (int)left.size() && j < (int)right.size()) {
+        if (left[i] <= right[j])
+            arr[k++] = left[i++];
+        else
+            arr[k++] = right[j++];
+    }
+
+    // Copy any leftover elements from either half
+    while (i < (int)left.size())  arr[k++] = left[i++];
+    while (j < (int)right.size()) arr[k++] = right[j++];
 }
 
-void mergeSort(int arr[], int lo, int hi) {
-    if (lo >= hi) return;
-    int mid = lo + (hi - lo) / 2;
-    mergeSort(arr, lo, mid);
-    mergeSort(arr, mid + 1, hi);
-    merge(arr, lo, mid, hi);
+// ---- Sort ------------------------------------------------------------
+
+void mergeSort(vector<int>& arr, int low, int high) {
+    if (low >= high)
+        return;
+
+    int mid = low + (high - low) / 2;
+
+    mergeSort(arr, low,     mid);
+    mergeSort(arr, mid + 1, high);
+
+    merge(arr, low, mid, high);
 }
+
+// ---- Helpers ---------------------------------------------------------
+
+void printArray(const vector<int>& arr) {
+    for (int x : arr)
+        cout << x << " ";
+    cout << endl;
+}
+
+// ---- Main ------------------------------------------------------------
 
 int main() {
     srand(time(0));
+
     int n;
-    cout << "Enter n: ";
+    cout << "Enter number of elements: ";
     cin >> n;
 
-    int manual;
-    cout << "Manual input? (1=yes, 0=random): ";
-    cin >> manual;
+    vector<int> arr(n);
 
-    int* arr = new int[n];
-    if (manual) {
-        cout << "Enter elements: ";
-        for (int i = 0; i < n; i++) cin >> arr[i];
+    int choice;
+    cout << "Press 1 for manual input, 0 for random: ";
+    cin >> choice;
+
+    if (choice == 1) {
+        cout << "Enter " << n << " elements: ";
+        for (int i = 0; i < n; i++)
+            cin >> arr[i];
     } else {
-        for (int i = 0; i < n; i++) arr[i] = rand() % 100000;
+        for (int i = 0; i < n; i++)
+            arr[i] = rand() % 100000;
     }
 
-    if (n <= 20) { cout << "Before: "; for (int i = 0; i < n; i++) cout << arr[i] << " "; cout << "\n"; }
+    if (n <= 50) {
+        cout << "Original : ";
+        printArray(arr);
+    }
 
     auto start = chrono::high_resolution_clock::now();
+
     mergeSort(arr, 0, n - 1);
-    auto end = chrono::high_resolution_clock::now();
 
-    if (n <= 20) { cout << "After:  "; for (int i = 0; i < n; i++) cout << arr[i] << " "; cout << "\n"; }
-    cout << "Time: " << chrono::duration_cast<chrono::microseconds>(end - start).count() << " us\n";
+    auto stop     = chrono::high_resolution_clock::now();
+    long long dur = chrono::duration_cast<chrono::microseconds>(stop - start).count();
 
-    delete[] arr;
+    if (n <= 50) {
+        cout << "Sorted   : ";
+        printArray(arr);
+    } else {
+        cout << n << " elements sorted successfully." << endl;
+    }
+
+    cout << "Time     : " << dur << " microseconds" << endl;
+
     return 0;
 }

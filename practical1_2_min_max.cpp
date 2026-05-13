@@ -1,39 +1,81 @@
-// Practical 1.2 - Min and Max using Divide and Conquer
-// Recursively split array into halves, find min/max in each half, merge results.
-// Time: O(n) | Comparisons: 3n/2 - 2 (better than 2n-2 linear)
+/*
+ * Min and Max using Divide and Conquer
+ *
+ * ---------------------------------------------------------------
+ * Algorithm:
+ *   Recursively split the array in half. Find the min and max of
+ *   each half, then combine by comparing the two halves.
+ *
+ * Time  : O(n)       — every element is visited exactly once
+ * Space : O(log n)   — recursion stack depth
+ *
+ * Comparison count: ~3n/2 - 2
+ *   Better than the naive 2(n-1) comparisons approach.
+ * ---------------------------------------------------------------
+ */
 
-#include <bits/stdc++.h>
+#include <iostream>
+#include <vector>
+#include <chrono>
+
 using namespace std;
 
-struct Pair { int min, max; };
+struct MinMax {
+    int min;
+    int max;
+};
 
-Pair getMinMax(int arr[], int lo, int hi) {
-    if (lo == hi) return {arr[lo], arr[lo]};
+// ---- Core Algorithm --------------------------------------------------
 
-    if (hi == lo + 1) {
-        if (arr[lo] > arr[hi]) return {arr[hi], arr[lo]};
-        return {arr[lo], arr[hi]};
+MinMax findMinMax(const vector<int>& arr, int low, int high) {
+    // Base case: only one element
+    if (low == high)
+        return {arr[low], arr[low]};
+
+    // Base case: two elements — direct comparison
+    if (high == low + 1) {
+        if (arr[low] < arr[high])
+            return {arr[low], arr[high]};
+        else
+            return {arr[high], arr[low]};
     }
 
-    int mid = (lo + hi) / 2;
-    Pair left  = getMinMax(arr, lo, mid);
-    Pair right = getMinMax(arr, mid + 1, hi);
+    // Divide into left and right halves
+    int mid = (low + high) / 2;
 
-    return {min(left.min, right.min), max(left.max, right.max)};
+    MinMax left  = findMinMax(arr, low, mid);
+    MinMax right = findMinMax(arr, mid + 1, high);
+
+    // Combine: take the best from each half
+    MinMax result;
+    result.min = (left.min < right.min) ? left.min : right.min;
+    result.max = (left.max > right.max) ? left.max : right.max;
+
+    return result;
 }
+
+// ---- Main ------------------------------------------------------------
 
 int main() {
     int n;
-    cout << "Enter n: ";
+    cout << "Enter number of elements: ";
     cin >> n;
 
-    int* arr = new int[n];
-    cout << "Enter elements: ";
-    for (int i = 0; i < n; i++) cin >> arr[i];
+    vector<int> arr(n);
+    cout << "Enter the elements: ";
+    for (int i = 0; i < n; i++)
+        cin >> arr[i];
 
-    Pair res = getMinMax(arr, 0, n - 1);
-    cout << "Min: " << res.min << "\nMax: " << res.max << "\n";
+    auto start = chrono::high_resolution_clock::now();
 
-    delete[] arr;
+    MinMax result = findMinMax(arr, 0, n - 1);
+
+    auto stop     = chrono::high_resolution_clock::now();
+    long long dur = chrono::duration_cast<chrono::microseconds>(stop - start).count();
+
+    cout << "\nMinimum : " << result.min << endl;
+    cout << "Maximum : " << result.max << endl;
+    cout << "Time    : " << dur << " microseconds" << endl;
+
     return 0;
 }

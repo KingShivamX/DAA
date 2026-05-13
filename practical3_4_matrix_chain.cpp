@@ -1,54 +1,102 @@
-// Practical 3.4 - Matrix Chain Multiplication (Dynamic Programming)
-// Find the optimal parenthesization that minimizes total scalar multiplications.
-// Time: O(n^3) | dp[i][j] = min cost to multiply matrices i through j.
+/*
+ * Matrix Chain Multiplication (Dynamic Programming)
+ *
+ * ---------------------------------------------------------------
+ * Find the optimal parenthesisation of a chain of matrices to
+ * minimise the total number of scalar multiplications.
+ *
+ * Input : dims[0..n] where matrix i has size dims[i] x dims[i+1]
+ *
+ * dp[i][j]    = minimum multiplications to compute matrices i..j
+ * split[i][j] = optimal split point k for subproblem i..j
+ *
+ * Cost of multiplying (i..k) * (k+1..j):
+ *   dp[i][k] + dp[k+1][j] + dims[i-1] * dims[k] * dims[j]
+ *
+ * Time  : O(n^3)  — three nested loops
+ * Space : O(n^2)  — dp and split tables
+ * ---------------------------------------------------------------
+ */
 
-#include <bits/stdc++.h>
+#include <iostream>
+#include <vector>
+#include <chrono>
+
 using namespace std;
 
-void printParens(vector<vector<int>>& s, int i, int j, char& name) {
-    if (i == j) { cout << name++; return; }
+const int INF = 1e9;
+
+// ---- Helpers ---------------------------------------------------------
+
+// Recursively print the optimal parenthesisation
+void printOptimalParens(const vector<vector<int>>& split, int i, int j, char& name) {
+    if (i == j) {
+        // Single matrix: print its label (A, B, C, ...)
+        cout << name++;
+        return;
+    }
     cout << "(";
-    printParens(s, i, s[i][j], name);
-    printParens(s, s[i][j] + 1, j, name);
+    printOptimalParens(split, i,               split[i][j],     name);
+    printOptimalParens(split, split[i][j] + 1, j,               name);
     cout << ")";
 }
 
-void matrixChain(int dims[], int n) {
-    vector<vector<int>> dp(n + 1, vector<int>(n + 1, 0));
-    vector<vector<int>> s(n + 1, vector<int>(n + 1, 0));
+// ---- Core Algorithm --------------------------------------------------
 
+void matrixChainOrder(const vector<int>& dims, int n) {
+    // dp[i][j]    = min cost for matrices i through j (1-indexed)
+    // split[i][j] = best split point k
+    vector<vector<int>> dp(n + 1,    vector<int>(n + 1, 0));
+    vector<vector<int>> split(n + 1, vector<int>(n + 1, 0));
+
+    // len = length of chain being considered (start from 2)
     for (int len = 2; len <= n; len++) {
         for (int i = 1; i <= n - len + 1; i++) {
             int j = i + len - 1;
-            dp[i][j] = INT_MAX;
+            dp[i][j] = INF;
+
+            // Try every possible split point k between i and j
             for (int k = i; k < j; k++) {
-                int cost = dp[i][k] + dp[k + 1][j] + dims[i - 1] * dims[k] * dims[j];
+                int cost = dp[i][k] + dp[k + 1][j]
+                         + dims[i - 1] * dims[k] * dims[j];
+
                 if (cost < dp[i][j]) {
-                    dp[i][j] = cost;
-                    s[i][j]  = k;
+                    dp[i][j]    = cost;
+                    split[i][j] = k;
                 }
             }
         }
     }
 
-    cout << "Min multiplications: " << dp[1][n] << "\n";
-    cout << "Optimal order: ";
+    cout << "\nMinimum scalar multiplications : " << dp[1][n] << endl;
+
+    cout << "Optimal parenthesisation       : ";
     char name = 'A';
-    printParens(s, 1, n, name);
-    cout << "\n";
+    printOptimalParens(split, 1, n, name);
+    cout << endl;
 }
+
+// ---- Main ------------------------------------------------------------
 
 int main() {
     int n;
     cout << "Enter number of matrices: ";
     cin >> n;
 
-    int* dims = new int[n + 1];
-    cout << "Enter " << n + 1 << " dimensions: ";
-    for (int i = 0; i <= n; i++) cin >> dims[i];
+    // Need n+1 dimensions: dims[0]xdims[1], dims[1]xdims[2], ...
+    vector<int> dims(n + 1);
+    cout << "Enter " << n + 1 << " dimensions (d0 d1 ... d" << n << "): ";
+    for (int i = 0; i <= n; i++)
+        cin >> dims[i];
 
-    matrixChain(dims, n);
+    auto start = chrono::high_resolution_clock::now();
 
-    delete[] dims;
+    matrixChainOrder(dims, n);
+
+    auto stop     = chrono::high_resolution_clock::now();
+    long long dur = chrono::duration_cast<chrono::microseconds>(stop - start).count();
+
+    cout << "Time                           : " << dur << " microseconds" << endl;
+
     return 0;
 }

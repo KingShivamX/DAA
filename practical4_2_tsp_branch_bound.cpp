@@ -1,90 +1,137 @@
-// Practical 4.2 - Travelling Salesman Problem (Branch and Bound)
-// Prune search tree using a lower bound estimated from minimum edge costs.
-// Explores fewer paths than brute force by discarding unpromising branches.
+/*
+ * Travelling Salesman Problem — Branch and Bound
+ *
+ * ---------------------------------------------------------------
+ * Explore the tree of all routes but prune branches where the
+ * lower-bound cost already meets or exceeds the best solution found.
+ *
+ * Lower bound used:
+ *   Sum over all cities of (min1_edge + min2_edge) / 2
+ *   where min1 and min2 are the two cheapest edges from each city.
+ *   This is the Held-Karp style bound.
+ *
+ * Time  : O(n^2 * 2^n) worst case — same as brute force without pruning
+ *         In practice much faster because many branches are pruned early.
+ * Space : O(n^2) — adjacency matrix + recursion stack
+ *
+ * Practical limit: works well for n <= 15 cities.
+ * ---------------------------------------------------------------
+ */
 
-#include <bits/stdc++.h>
+#include <iostream>
+#include <climits>
+#include <chrono>
+#include <algorithm>
+
 using namespace std;
 
-const int MAXN = 10;
-int adj[MAXN][MAXN];
-bool visited[MAXN];
-int finalMin = INT_MAX;
+const int MAX = 10;
 
-// Minimum edge cost leaving a city
+int  adj[MAX][MAX];
+bool visited[MAX];
+int  bestCost;
+
+// ---- Bound Helpers ---------------------------------------------------
+
+// Minimum edge cost leaving 'city'
 int firstMin(int city, int n) {
     int mn = INT_MAX;
     for (int k = 0; k < n; k++)
-        if (adj[city][k] < mn && city != k)
+        if (k != city && adj[city][k] < mn)
             mn = adj[city][k];
     return mn;
 }
 
-// Second minimum edge cost leaving a city
+// Second minimum edge cost leaving 'city'
 int secondMin(int city, int n) {
     int first = INT_MAX, second = INT_MAX;
-    for (int j = 0; j < n; j++) {
-        if (city == j) continue;
-        if (adj[city][j] <= first) { second = first; first = adj[city][j]; }
-        else if (adj[city][j] < second) second = adj[city][j];
+    for (int k = 0; k < n; k++) {
+        if (k == city) continue;
+        if (adj[city][k] <= first) {
+            second = first;
+            first  = adj[city][k];
+        } else if (adj[city][k] < second) {
+            second = adj[city][k];
+        }
     }
     return second;
 }
 
-void solve(int bound, int weight, int level, int path[], int n) {
+// ---- Branch and Bound ------------------------------------------------
+
+void tspBnB(int bound, int weight, int level, int path[], int n) {
     if (level == n) {
+        // All cities visited; check if we can close the tour back to city 0
         if (adj[path[level - 1]][path[0]] != 0) {
             int total = weight + adj[path[level - 1]][path[0]];
-            finalMin = min(finalMin, total);
+            bestCost  = min(bestCost, total);
         }
         return;
     }
 
-    for (int i = 0; i < n; i++) {
-        if (adj[path[level - 1]][i] != 0 && !visited[i]) {
-            int tempBound = bound;
-            weight += adj[path[level - 1]][i];
+    for (int city = 0; city < n; city++) {
+        if (adj[path[level - 1]][city] == 0 || visited[city])
+            continue;
 
-            // Update lower bound estimate
-            tempBound -= (level == 1)
-                ? (firstMin(path[level - 1], n) + firstMin(i, n)) / 2
-                : (secondMin(path[level - 1], n) + firstMin(i, n)) / 2;
+        int savedBound = bound;
+        weight += adj[path[level - 1]][city];
 
-            if (tempBound + weight < finalMin) {
-                path[level] = i;
-                visited[i]  = true;
-                solve(tempBound, weight, level + 1, path, n);
-            }
+        // Update the lower bound for this step
+        if (level == 1)
+            bound -= (firstMin(path[level - 1], n) + firstMin(city, n)) / 2;
+        else
+            bound -= (secondMin(path[level - 1], n) + firstMin(city, n)) / 2;
 
-            // Backtrack
-            weight -= adj[path[level - 1]][i];
-            visited[i] = false;
+        // Only go deeper if the current path + bound is still promising
+        if (bound + weight < bestCost) {
+            path[level]   = city;
+            visited[city] = true;
+            tspBnB(bound, weight, level + 1, path, n);
         }
+
+        // Backtrack: restore weight and bound, unmark visited cities
+        weight -= adj[path[level - 1]][city];
+        bound   = savedBound;
+        fill(visited, visited + n, false);
+        for (int i = 0; i < level; i++)
+            visited[path[i]] = true;
     }
 }
+
+// ---- Main ------------------------------------------------------------
 
 int main() {
     int n;
     cout << "Enter number of cities: ";
     cin >> n;
 
-    cout << "Enter cost matrix (" << n << "x" << n << "):\n";
+    cout << "Enter the " << n << "x" << n << " cost matrix:" << endl;
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++)
             cin >> adj[i][j];
 
-    // Initial lower bound: sum of (min1 + min2) / 2 for each city
-    int bound = 0;
+    // Compute initial lower bound using all cities
+    int initialBound = 0;
     for (int i = 0; i < n; i++)
-        bound += (firstMin(i, n) + secondMin(i, n));
-    bound /= 2;
+        initialBound += (firstMin(i, n) + secondMin(i, n));
+    initialBound /= 2;
 
     fill(visited, visited + n, false);
-    int path[MAXN];
+    bestCost    = INT_MAX;
+
+    int path[MAX];
     path[0]      = 0;
     visited[0]   = true;
 
-    solve(bound, 0, 1, path, n);
+    auto start = chrono::high_resolution_clock::now();
 
-    cout << "Min cost: " << finalMin << "\n";
+    tspBnB(initialBound, 0, 1, path, n);
+
+    auto stop     = chrono::high_resolution_clock::now();
+    long long dur = chrono::duration_cast<chrono::microseconds>(stop - start).count();
+
+    cout << "\nMinimum TSP cost : " << bestCost << endl;
+    cout << "Time             : " << dur << " microseconds" << endl;
+
     return 0;
 }
